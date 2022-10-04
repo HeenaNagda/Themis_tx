@@ -100,6 +100,10 @@ void HotStuffCore::update(const block_t &nblk) {
     /* Update missing edge cache */
     for(auto const &edge: nblk->get_e_update()) {
         storage->remove_missing_edge(edge.first, edge.second);
+        for (auto bk = nblk; bk->height > b_exec->height; bk = bk->parents[0])
+        { 
+            bk->update_graph(edge);
+        }
         HOTSTUFF_LOG_DEBUG("[[update]] [R-%d] [L-] Removing missing edge = %.10s -> %.10s", get_id(), get_hex(edge.first).c_str(), get_hex(edge.second).c_str());
     }
     for(auto const &edge: nblk->get_missing_edges()) {
@@ -248,12 +252,12 @@ std::vector<uint256_t> HotStuffCore::
     
     /** (1) For all Bi and transactions tx, tx0 in Bi that do not have an edge between them, 
      * if (tx; tx0) is in some Bj.e_update, then add that edge to Bi.G **/
-    for(auto const &edge: e_update){
-        if(graph.count(edge.first)>0 && graph.count(edge.second)>0){
-            /* nodes exists but edge does not exists: update these edges */
-            blk->update_graph(edge);
-        }
-    }
+    // for(auto const &edge: e_update){
+    //     if(graph.count(edge.first)>0 && graph.count(edge.second)>0){
+    //         /* nodes exists but edge does not exists: update these edges */
+    //         blk->update_graph(edge);
+    //     }
+    // }
 
     /** (2) is graph B.G is a tournament **/
     if(!blk->is_tournament_graph()){
