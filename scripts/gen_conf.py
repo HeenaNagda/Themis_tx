@@ -17,7 +17,7 @@ if __name__ == "__main__":
     parser.add_argument('--pace-maker', type=str, default='dummy')
     parser.add_argument('--nworker', type=int, default=4)
     parser.add_argument('--repnworker', type=int, default=4)
-    parser.add_argument('--clinworker', type=int, default=4)
+    parser.add_argument('--clinworker', type=int, default=1)
     parser.add_argument('--repburst', type=int, default=1000)
     parser.add_argument('--cliburst', type=int, default=1000)
     parser.add_argument('--sb-users', type=int, default=20)
