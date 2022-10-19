@@ -67,6 +67,8 @@ std::vector<NetAddr> replicas;
 std::vector<std::pair<struct timeval, double>> elapsed;
 std::unique_ptr<Net> mn;
 SmallBankManager *small_bank_manager;
+double time_consumed_in_cmd_generation = 0.0;
+
 
 void connect_all() {
     for (size_t i = 0; i < replicas.size(); i++)
@@ -77,6 +79,8 @@ bool try_send(bool check = true) {
     if ((!check || waiting.size() < max_async_num) && max_iter_num)
     {
         // auto cmd = new CommandDummy(cid, cnt++);
+        salticidae::ElapsedTime et_cmd_generation;
+        et_cmd_generation.start();
         auto next_tx = small_bank_manager->get_next_transaction_serialized();
         auto cmd = new CommandDummy(cid, cnt++, next_tx);
 
@@ -93,6 +97,8 @@ bool try_send(bool check = true) {
         HOTSTUFF_LOG_INFO("send new cmd %.10s with payload (size %ld) %s",
                             get_hex(cmd->get_hash()).c_str(), cmd->get_payload_size(), data.c_str());
 #endif
+        et_cmd_generation.stop();
+        time_consumed_in_cmd_generation += et_cmd_generation.elapsed_sec;
         waiting.insert(std::make_pair(
             cmd->get_hash(), Request(cmd)));
         if (max_iter_num > 0)
@@ -207,5 +213,6 @@ int main(int argc, char **argv) {
         fprintf(stderr, fmt, e.first.tv_usec, e.second);
     }
 #endif
+    HOTSTUFF_LOG_INFO("time_consumed_in_cmd_generation = %lf", time_consumed_in_cmd_generation);
     return 0;
 }

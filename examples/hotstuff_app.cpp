@@ -187,7 +187,7 @@ int main(int argc, char **argv) {
     auto opt_nworker = Config::OptValInt::create(1);
     auto opt_repnworker = Config::OptValInt::create(1);
     auto opt_repburst = Config::OptValInt::create(100);
-    auto opt_clinworker = Config::OptValInt::create(8);
+    auto opt_clinworker = Config::OptValInt::create(1);
     auto opt_cliburst = Config::OptValInt::create(1000);
     auto opt_notls = Config::OptValFlag::create(false);
     auto opt_max_rep_msg = Config::OptValInt::create(4 << 20); // 4M by default
@@ -285,6 +285,8 @@ int main(int argc, char **argv) {
     clinet_config
         .burst_size(opt_cliburst->get())
         .nworker(opt_clinworker->get());
+
+    HOTSTUFF_LOG_INFO("[[main]] sb_users = %ld", opt_sb_users->get());
     papp = new HotStuffApp(opt_sb_users->get(),
                         opt_sb_prob_choose_mtx->get(),
                         opt_sb_skew_factor->get(),
