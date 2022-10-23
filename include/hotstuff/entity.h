@@ -24,6 +24,7 @@
 #include <cstddef>
 #include <ios>
 #include <queue>
+#include <deque>
 
 #include "salticidae/netaddr.h"
 #include "salticidae/ref.h"
@@ -316,7 +317,7 @@ struct BlockHeightCmp {
 class EntityStorage {
     std::unordered_map<const uint256_t, block_t> blk_cache;
     std::unordered_map<const uint256_t, command_t> cmd_cache;
-    std::unordered_map<ReplicaID, std::queue<std::vector<uint256_t>>> ordered_hash_cache;                     // Themis
+    std::unordered_map<ReplicaID, std::deque<std::vector<uint256_t>>> ordered_hash_cache;                     // Themis
     std::unordered_map<ReplicaID, std::queue<std::vector<std::pair<uint256_t, uint256_t>>>> l_update_cache;   // Themis
     OrderedList *local_order_seen_execute_level_cache;                                            // Themis
     std::unordered_map<uint256_t, std::unordered_set<uint256_t>> edges_missing_cache;             // Themis
@@ -418,21 +419,20 @@ class EntityStorage {
             }
         }
         if(!unproposed_hashes.empty()){
-            ordered_hash_cache[rid].push(unproposed_hashes);
+            ordered_hash_cache[rid].push_back(unproposed_hashes);
+            HOTSTUFF_LOG_DEBUG("Unproposed");
         }
-        // ordered_hash_cache[rid].push(ordered_hash);
         l_update_cache[rid].push(l_update);
     }
 
     // Themis
-    // void clear_local_order(){
-    //     ordered_hash_cache.clear();
-    //     l_update_cache.clear();
-    // }
+    void add_ordered_hash_to_front(ReplicaID rid, const std::vector<uint256_t> ordered_hash){
+        ordered_hash_cache[rid].push_front(ordered_hash);
+    }
 
     // Themis
     void clear_front_ordered_hash(ReplicaID replica) {
-        ordered_hash_cache[replica].pop();
+        ordered_hash_cache[replica].pop_front();
         if(ordered_hash_cache[replica].empty()){
             ordered_hash_cache.erase(replica);
         }
@@ -448,7 +448,7 @@ class EntityStorage {
     // Themis
     void clear_ordered_hash_if_propose(){
         for(auto &cache: ordered_hash_cache){
-            std::queue<std::vector<uint256_t>> *q = &cache.second;
+            std::deque<std::vector<uint256_t>> *q = &cache.second;
             auto q_size = q->size();
             for(size_t qi=0; qi<q_size; qi++){
                 auto order_size = q->front().size();
@@ -464,9 +464,9 @@ class EntityStorage {
                 }
                 auto order = q->front();
                 HOTSTUFF_LOG_INFO("[[clear_ordered_hash_if_propose]] Order size after = %ld", q->front().size());
-                q->pop();
+                q->pop_front();
                 if(order.size()>0){
-                    q->push(order);
+                    q->push_back(order);
                 }
                 else{
                     HOTSTUFF_LOG_INFO("[[clear_ordered_hash_if_propose]] order is completely removed from replica = %d", cache.first);
@@ -591,11 +591,13 @@ class EntityStorage {
 
     // Themis Dummy
     void add_to_proposed_cmds_cache(uint256_t cmd){
+        HOTSTUFF_LOG_DEBUG("[[add_to_proposed_cmds_cache]] %.10s", cmd.to_hex().c_str());
         proposed_cmds_cache.insert(cmd);
     }   
 
     // Themis Dummy
     void remove_from_proposed_cmds_cache(uint256_t cmd){
+        HOTSTUFF_LOG_DEBUG("[[remove_from_proposed_cmds_cache]] %.10s", cmd.to_hex().c_str());
         proposed_cmds_cache.erase(cmd);
     }  
 

@@ -294,10 +294,6 @@ block_t HotStuffCore::on_propose(/* const std::vector<uint256_t> &cmds,*/       
     // for(auto g: graph){
     //     storage->clear_ordered_hash_on_propose(g.first);
     // }
-    /* Store proposed commands */
-    for(auto g: graph){
-        storage->add_to_proposed_cmds_cache(g.first);
-    }
 
     /* create the new block */
     block_t bnew = storage->add_blk(
@@ -511,8 +507,23 @@ bool HotStuffCore::on_receive_local_order (const LocalOrder &local_order, const 
     storage->add_local_order(local_order.initiator, local_order.ordered_hashes, local_order.l_update);
 
     /** Trigger FairPropose() and FairUpdate() **/
-    size_t qsize = storage->get_local_order_cache_size();
-    if(qsize >= config.nmajority){
+    if(storage->get_local_order_cache_size() >= config.nmajority){
+        // Check if the commands in front of all the queues are proposed OR not
+        std::vector<ReplicaID> replicas = storage->get_ordered_hash_replia_vector();
+        for(ReplicaID replica: replicas){
+            std::vector<uint256_t> unproposed_hashes;
+            for(uint256_t tx_hash: storage->get_ordered_hash_vector(replica)){
+                if(!storage->is_cmd_proposed(tx_hash)){
+                    unproposed_hashes.push_back(tx_hash);
+                }
+            }
+            if(unproposed_hashes.size() < storage->get_ordered_hash_vector(replica).size()){
+                storage->clear_front_ordered_hash(replica);
+                if(!unproposed_hashes.empty()){
+                    storage->add_ordered_hash_to_front(replica, unproposed_hashes);
+                }
+            }
+        }
 
 #ifdef HOTSTUFF_ENABLE_LOG_DEBUG
 // #ifdef NOTDEFINE
@@ -522,7 +533,7 @@ bool HotStuffCore::on_receive_local_order (const LocalOrder &local_order, const 
             }
         }
 #endif
-        return true;
+        return storage->get_local_order_cache_size() >= config.nmajority;
     }
     HOTSTUFF_LOG_DEBUG("[[on_receive_local_order]] [fromR-%d] [thisL-%d] No majority Found", local_order.initiator, get_id());
     return false;

@@ -60,7 +60,7 @@ void Block::serialize(DataStream &s) const {
 
     /* Optimize graph serialization */
     for (auto const &key: keys){
-        HOTSTUFF_LOG_DEBUG("[[serialize]] added key = %.10s", key.to_hex().c_str());
+        // HOTSTUFF_LOG_DEBUG("[[serialize]] added key = %.10s", key.to_hex().c_str());
         s << key;
 
         std::vector<uint64_t> vals;
@@ -68,15 +68,15 @@ void Block::serialize(DataStream &s) const {
             vals.push_back(0x00);
         }
         for(auto const &neighbor: graph.at(key)){
-            HOTSTUFF_LOG_DEBUG("[[serialize]] neighbor is = %.10s", neighbor.to_hex().c_str());
+            // HOTSTUFF_LOG_DEBUG("[[serialize]] neighbor is = %.10s", neighbor.to_hex().c_str());
             int group_i = node_to_idx[neighbor]/64;
             vals[group_i] = vals[group_i] | (1UL << (node_to_idx[neighbor]-(64*group_i)));
-            HOTSTUFF_LOG_DEBUG("[[serialize]] group number = %d, group = 0x%x, bit set = %d", group_i, vals[group_i], node_to_idx[neighbor]-(64*group_i));
+            // HOTSTUFF_LOG_DEBUG("[[serialize]] group number = %d, group = 0x%x, bit set = %d", group_i, vals[group_i], node_to_idx[neighbor]-(64*group_i));
         }
 
         /* IMPORTANT: Max block size supported is 64*8*4=2176 */
         for(auto val: vals){
-            HOTSTUFF_LOG_DEBUG("[[serialize]] added group = 0x%x (%lu)", val, val);
+            // HOTSTUFF_LOG_DEBUG("[[serialize]] added group = 0x%x (%lu)", val, val);
             s << htole(val);
         }
     }
@@ -143,34 +143,34 @@ void Block::unserialize(DataStream &s, HotStuffCore *hsc) {
     uint64_t val;
     for(size_t key_i=0; key_i<n; key_i++){
         s >> key;
-        HOTSTUFF_LOG_DEBUG("[[unserialize]] extracted key = %.10s", key.to_hex().c_str());
+        // HOTSTUFF_LOG_DEBUG("[[unserialize]] extracted key = %.10s", key.to_hex().c_str());
         std::vector<uint64_t> vals;
 
         for(int i=0; i<MAX_PROPOSAL_SIZE_SUPPORTED/64; i++){
             s >> val;
             val = letoh(val);
-            HOTSTUFF_LOG_DEBUG("[[unserialize]] extracted group = %.ld", val);
+            // HOTSTUFF_LOG_DEBUG("[[unserialize]] extracted group = %.ld", val);
             vals.push_back(val);
         }
 
         adj_matrix.push_back(std::make_pair(key, vals));
     }
     /* Create a graph using adj matrix */
-    HOTSTUFF_LOG_DEBUG("[[unserialize]] number of nodes = %ld", adj_matrix.size());
+    // HOTSTUFF_LOG_DEBUG("[[unserialize]] number of nodes = %ld", adj_matrix.size());
     for(auto const &element: adj_matrix){
         graph[element.first] = std::unordered_set<uint256_t>();
-        HOTSTUFF_LOG_DEBUG("[[unserialize]] adj matrix key picked = %.10s", element.first.to_hex().c_str());
+        // HOTSTUFF_LOG_DEBUG("[[unserialize]] adj matrix key picked = %.10s", element.first.to_hex().c_str());
         for(int group_i=0; group_i<MAX_PROPOSAL_SIZE_SUPPORTED/64; group_i++){
             uint64_t group = element.second[group_i];
-            HOTSTUFF_LOG_DEBUG("[[unserialize]] group number = %d, group = 0x%x", group_i, group);
+            // HOTSTUFF_LOG_DEBUG("[[unserialize]] group number = %d, group = 0x%x", group_i, group);
             if(group==0){
                 continue;
             }
             for(int i=0; i<64; i++){
                 if(((uint64_t)group & (1UL<<i)) != 0){
-                    HOTSTUFF_LOG_DEBUG("[[unserialize]] Matrix index = %d, anding = 0x%x", (i+(group_i*64)), group&(1<<i));
+                    // HOTSTUFF_LOG_DEBUG("[[unserialize]] Matrix index = %d, anding = 0x%x", (i+(group_i*64)), group&(1<<i));
                     graph[element.first].insert(adj_matrix[i+(group_i*64)].first);
-                    HOTSTUFF_LOG_DEBUG("[[unserialize]] Created graph = %.10s -> %.10s", element.first.to_hex().c_str(), adj_matrix[i+(group_i*64)].first.to_hex().c_str());
+                    // HOTSTUFF_LOG_DEBUG("[[unserialize]] Created graph = %.10s -> %.10s", element.first.to_hex().c_str(), adj_matrix[i+(group_i*64)].first.to_hex().c_str());
                 }
             }
         }
